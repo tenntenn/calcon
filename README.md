@@ -5,7 +5,7 @@ calcon gets events of Google calendar via API and outputs ics files or Google ca
 ## Install
 
 ```
-$ go install 
+$ go install github.com/tenntenn/calcon/cmd/calcon@latest
 ```
 
 ## How to use
