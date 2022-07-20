@@ -3,6 +3,8 @@ module github.com/tenntenn/calcon
 go 1.18
 
 require (
+	github.com/arran4/golang-ical v0.0.0-20220517104411-fd89fefb0182
+	github.com/k3a/html2text v1.0.8
 	go.uber.org/multierr v1.8.0
 	golang.org/x/exp v0.0.0-20220713135740-79cabaa25d75
 	google.golang.org/api v0.86.0
