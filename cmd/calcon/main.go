@@ -9,14 +9,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 
+	"github.com/k3a/html2text"
 	"github.com/tenntenn/calcon"
 	"github.com/tenntenn/calcon/google"
+	"github.com/tenntenn/calcon/ics"
 	"go.uber.org/multierr"
-	"google.golang.org/api/calendar/v3"
-	"golang.org/x/exp/slices"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
+	"google.golang.org/api/calendar/v3"
 )
 
 var idRegexp = regexp.MustCompile(`^\[(.+)\]`)
@@ -56,25 +60,13 @@ func run(ctx context.Context, args []string) (rerr error) {
 		return err
 	}
 
-	var w io.Writer = os.Stdout
-	if flagOutput != "" {
-		f, err := os.Create("flagOutput")
-		if err != nil {
-			return err
-		}
-		defer func() {
-			rerr = multierr.Append(rerr, f.Close())
-		}()
-		w = f
-	}
-
 	switch flagFormat {
 	case "google-csv", "google-json":
-		if err := outputGoogle(w, evts); err != nil {
+		if err := outputGoogle(evts); err != nil {
 			return err
 		}
 	case "ics":
-		if err := outputICS(w, evts); err != nil {
+		if err := outputICSAll(evts); err != nil {
 			return err
 		}
 	default:
@@ -84,7 +76,7 @@ func run(ctx context.Context, args []string) (rerr error) {
 	return nil
 }
 
-func outputGoogle(w io.Writer, events []*calcon.Event) error {
+func outputGoogle(events []*calcon.Event) (rerr error) {
 	if len(events) == 0 {
 		return nil
 	}
@@ -96,8 +88,20 @@ func outputGoogle(w io.Writer, events []*calcon.Event) error {
 			return fmt.Errorf("Title %q does not have id", events[i].Title)
 		}
 		events[i].Title = events[i].Title[len(id):]
-		id = id[1:len(id)-1]
+		id = id[1 : len(id)-1]
 		gevents[id] = google.New(events[i]).Link()
+	}
+
+	var w io.Writer = os.Stdout
+	if flagOutput != "" {
+		f, err := os.Create("flagOutput")
+		if err != nil {
+			return err
+		}
+		defer func() {
+			rerr = multierr.Append(rerr, f.Close())
+		}()
+		w = f
 	}
 
 	switch flagFormat {
@@ -146,6 +150,50 @@ func outputGoogleJSON(w io.Writer, links map[string]string) error {
 	return nil
 }
 
-func outputICS(w io.Writer, events []*calcon.Event) error {
+func outputICSAll(events []*calcon.Event) error {
+	output := "ics"
+	if flagOutput != "" {
+		output = flagOutput
+	}
+
+	if err := os.MkdirAll(output, 0o744); err != nil {
+		return err
+	}
+
+	for _, e := range events {
+		if err := outputICS(output, e); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func outputICS(dir string, e *calcon.Event) (rerr error) {
+
+	id := idRegexp.FindString(e.Title)
+	if len(id) < 3 {
+		return fmt.Errorf("Title %q does not have id", e.Title)
+	}
+
+	e.Title = e.Title[len(id):]
+	id = id[1 : len(id)-1]
+
+	e.Description = strings.ReplaceAll(html2text.HTML2Text(e.Description), "\r", "")
+
+	fpath := filepath.Join(dir, id+".ics")
+	f, err := os.Create(fpath)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		rerr = multierr.Append(rerr, f.Close())
+	}()
+
+	if err := ics.Serialize(f, []*calcon.Event{e}); err != nil {
+		return err
+	}
+
 	return nil
 }
