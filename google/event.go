@@ -7,7 +7,10 @@ import (
 	"github.com/tenntenn/calcon"
 )
 
-const urlPrefix = "https://www.google.com/calendar/render?"
+const (
+	urlPrefix = "https://www.google.com/calendar/render?"
+	layout    = "20060102T150405Z0700"
+)
 
 type Event struct {
 	UUID     string
@@ -34,9 +37,9 @@ func (e *Event) Link() string {
 	}
 
 	if !e.StartAt.IsZero() {
-		dates := e.StartAt.Format(time.RFC3339)
+		dates := e.StartAt.Format(layout)
 		if !e.EndAt.IsZero() {
-			dates += "/" + e.EndAt.Format(time.RFC3339)
+			dates += "/" + e.EndAt.Format(layout)
 		}
 		val.Set("dates", dates)
 	}
@@ -61,11 +64,18 @@ func (e *Event) Link() string {
 }
 
 func New(e *calcon.Event) *Event {
+	startAt := e.StartAt
+	endAt := e.EndAt
+	if e.TimeZone != nil {
+		startAt = startAt.In(e.TimeZone)
+		endAt = endAt.In(e.TimeZone)
+	}
+
 	return &Event{
 		UUID:     e.ID,
 		Text:     e.Title,
-		StartAt:  e.StartAt,
-		EndAt:    e.EndAt,
+		StartAt:  startAt,
+		EndAt:    endAt,
 		Details:  e.Description,
 		Location: e.Location,
 		URL:      e.URL.String(),
