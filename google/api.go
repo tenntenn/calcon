@@ -86,7 +86,7 @@ func toTime(edt *calendar.EventDateTime) (time.Time, error) {
 	}
 
 	loc, err := time.LoadLocation(edt.TimeZone)
-	if err == nil {
+	if err != nil {
 		return time.Time{}, err
 	}
 
