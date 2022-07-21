@@ -94,7 +94,7 @@ func outputGoogle(events []*calcon.Event) (rerr error) {
 
 	var w io.Writer = os.Stdout
 	if flagOutput != "" {
-		f, err := os.Create("flagOutput")
+		f, err := os.Create(flagOutput)
 		if err != nil {
 			return err
 		}
